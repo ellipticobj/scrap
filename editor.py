@@ -1,17 +1,16 @@
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout, HSplit, ConditionalContainer
-from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.widgets import TextArea, Label
+from prompt_toolkit.widgets import TextArea, Label, SearchToolbar
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.styles import Style
-import re
 import os
 
 class Editor:
     def __init__(self, filepath, buffer = "", line=0):
         self.text = buffer
         self.filepath = filepath
+        self.usrhome = os.path.expanduser("~")
         self.currentline = line
         self.mode = "NORMAL" # NORMAL, INSERT, COMMAND, SEARCH
 
@@ -21,11 +20,16 @@ class Editor:
         except FileNotFoundError:
             self.text = ""
 
+        self.keybinds = KeyBindings()
+        self._configurekeybindings_FORNORMALMODE()
+        self._configurekeybindings_FORCOMMANDMODE()
+        self._configurekeybindings_FORINSERTMODE()
+
         self.textarea = TextArea(
             text=self.text,
             scrollbar=True,
             line_numbers=True,
-            wrap_lines=False,
+            wrap_lines=True,
             read_only=True
         )
 
@@ -35,30 +39,24 @@ class Editor:
             multiline=False
         )
 
+        self.searchbar = SearchToolbar(ignore_case=True)
+
         self.statusbar = Label(
             # TODO
             text="",
             style="class:status"
         )
 
-        self.rootcontainer = HSplit(
-            [
-                self.textarea,
-                ConditionalContainer(
-                    content=self.commandline,
-                    filter=Condition(
-                        lambda: self.mode in ["COMMAND", "SEARCH"]
-                    ),
+        self.rootcontainer = HSplit([
+            self.textarea,
+            ConditionalContainer(
+                content=self.commandline,
+                filter=Condition(
+                    lambda: self.mode == "COMMAND"
                 ),
-                self.statusbar,
-            ]
-        )
-
-        self.keybinds = KeyBindings()
-        self._configurekeybindings_FORNORMALMODE()
-        self._configurekeybindings_FORCOMMANDMODE()
-        self._configurekeybindings_FORSEARCHMODE()
-        self._configurekeybindings_FORINSERTMODE()
+            ),
+            self.statusbar,
+        ])
 
         self.application = Application(
             layout=Layout(self.rootcontainer),
@@ -75,7 +73,6 @@ class Editor:
         @self.keybinds.add(':', filter=condition)
         def entercommandmode(event):
             self.mode = "COMMAND"
-            self.commandline.prompt = ':'
             self.commandline.text = ''
             self.application.layout.focus(self.commandline)
             self._updatestatusbar()
@@ -83,6 +80,7 @@ class Editor:
         @self.keybinds.add('i', filter=condition)
         def enterinsertmode(event):
             self.mode = "INSERT"
+            self.textarea.read_only = False
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
@@ -92,7 +90,6 @@ class Editor:
         @self.keybinds.add('escape', filter=condition)
         def cancelcommand(event):
             self.mode = "NORMAL"
-            self.commandline.prompt = ':'
             self.commandline.text = ''
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
@@ -103,7 +100,6 @@ class Editor:
             if command:
                 self._handlecommand(command)
             self.mode = "NORMAL"
-            self.commandline.prompt = ':'
             self.commandline.text = ''
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
@@ -113,34 +109,13 @@ class Editor:
         @self.keybinds.add('escape', filter=condition)
         def cancelinsert(event):
             self.mode = "NORMAL"
-            self.commandline.prompt = ':'
-            self.commandline.text = ''
-            self.application.layout.focus(self.textarea)
-            self._updatestatusbar()
-
-    def _configurekeybindings_FORSEARCHMODE(self):
-        condition = Condition(lambda: self.mode == "SEARCH")
-        @self.keybinds.add('escape', filter=condition)
-        def cancelsearch(event):
-            self.mode = "NORMAL"
-            self.commandline.prompt = '/'
-            self.commandline.text = ''
-            self.application.layout.focus(self.textarea)
-            self._updatestatusbar()
-
-        @self.keybinds.add('enter', filter=condition)
-        def search(event):
-            query = self.commandline.text.strip()
-            if query:
-                self._search(query)
-            self.mode = "NORMAL"
-            self.commandline.prompt = '/'
+            self.textarea.read_only = True
             self.commandline.text = ''
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
     def _getstatusbartext(self):
-        return f"{self.mode}   file: {os.path.basename(self.filepath) if os.path.basename(self.filepath) else 'untitled'}"
+        return f"{self.mode} | in: {os.path.basename(self.filepath) if os.path.basename(self.filepath) else 'untitled'}"
 
     def _updatestatusbar(self, message=None):
         text = self._getstatusbartext()
@@ -162,9 +137,10 @@ class Editor:
 
     def _search(self, query):
         # TODO: check this code
+        self.commandline.prompt = '/'
         lines = self.textarea.text.split('\n')
         matches = [i+1 for i, line in enumerate(lines) if query in line]
-        return f"found {len(matches)} matches at lines {matches}"
+        self._updatestatusbar(f"found {len(matches)} matches at lines {matches}")
 
     def _handlecommand(self, cmd):
         '''
