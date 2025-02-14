@@ -58,6 +58,7 @@ class Editor:
         self._configurekeybindings_FORNORMALMODE()
         self._configurekeybindings_FORCOMMANDMODE()
         self._configurekeybindings_FORSEARCHMODE()
+        self._configurekeybindings_FORINSERTMODE()
 
         self.application = Application(
             layout=Layout(self.rootcontainer),
@@ -70,6 +71,7 @@ class Editor:
 
     def _configurekeybindings_FORNORMALMODE(self):
         condition = Condition(lambda: self.mode == "NORMAL")
+
         @self.keybinds.add(':', filter=condition)
         def entercommandmode(event):
             self.mode = "COMMAND"
@@ -78,8 +80,23 @@ class Editor:
             self.application.layout.focus(self.commandline)
             self._updatestatusbar()
 
+        @self.keybinds.add('i', filter=condition)
+        def enterinsertmode(event):
+            self.mode = "INSERT"
+            self.application.layout.focus(self.textarea)
+            self._updatestatusbar()
+
     def _configurekeybindings_FORCOMMANDMODE(self):
         condition = Condition(lambda: self.mode == "COMMAND")
+
+        @self.keybinds.add('escape', filter=condition)
+        def cancelcommand(event):
+            self.mode = "NORMAL"
+            self.commandline.prompt = ':'
+            self.commandline.text = ''
+            self.application.layout.focus(self.textarea)
+            self._updatestatusbar()
+
         @self.keybinds.add('enter', filter=condition)
         def executecommand(event):
             command = self.commandline.text.strip()
@@ -91,8 +108,26 @@ class Editor:
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
+    def _configurekeybindings_FORINSERTMODE(self):
+        condition = Condition(lambda: self.mode == "INSERT")
+        @self.keybinds.add('escape', filter=condition)
+        def cancelinsert(event):
+            self.mode = "NORMAL"
+            self.commandline.prompt = ':'
+            self.commandline.text = ''
+            self.application.layout.focus(self.textarea)
+            self._updatestatusbar()
+
     def _configurekeybindings_FORSEARCHMODE(self):
         condition = Condition(lambda: self.mode == "SEARCH")
+        @self.keybinds.add('escape', filter=condition)
+        def cancelsearch(event):
+            self.mode = "NORMAL"
+            self.commandline.prompt = '/'
+            self.commandline.text = ''
+            self.application.layout.focus(self.textarea)
+            self._updatestatusbar()
+
         @self.keybinds.add('enter', filter=condition)
         def search(event):
             query = self.commandline.text.strip()
