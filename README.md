@@ -12,8 +12,8 @@ super basic vim keybinds:
 default folder for notes is at ~/.config/scrappad
 
 # building
+edit setup.py to whatever
 run `pip install .` to build this project.
-
 
 # screenshots
 ![screenshot](assets/screenshot.png)
