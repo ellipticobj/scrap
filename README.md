@@ -1,5 +1,6 @@
-# scrappad
+# scrap
 this is a super simple vim-like notetaking app i made for myself
+built with cython
 
 # features
 super basic vim keybinds:
@@ -9,6 +10,10 @@ super basic vim keybinds:
 `i` ---- insert mode
 
 default folder for notes is at ~/.config/scrappad
+
+# building
+run `pip install .` to build this project.
+
 
 # screenshots
 ![screenshot](assets/screenshot.png)

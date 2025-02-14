@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+scrap.egg-info
 
 # C extensions
 *.so
