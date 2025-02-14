@@ -164,8 +164,12 @@ class Editor:
                     if parts[1] and parts[1] == "!":
                         self._quit()
 
-                with open(self.filepath, 'r') as file:
-                    cont = file.read()
+                try:
+                    with open(self.filepath, 'r') as file:
+                        cont = file.read()
+                except FileNotFoundError:
+                    cont = ''
+
                 if cont != self.buffer:
                     self._updatestatusbar("changes have been made.")
                     return

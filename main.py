@@ -1,14 +1,18 @@
-import sys
+from sys import argv
+from os import makedirs
+from os.path import expanduser, isdir
 
 from editor import Editor
 
 def main():
-    args = sys.argv[1:]
+    usrhome = expanduser("~")
+    args = argv[1:]
+    if not isdir(f"{usrhome}/.config/scrappad/"):
+        makedirs(f"{usrhome}/.config/scrappad/")
     if args:
         editor = Editor(filepath=args[0])
     else:
-        # TODO: add default file path
-        editor = Editor("default.txt")
+        editor = Editor(f"{usrhome}/.config/scrappad/notes.txt")
 
     editor.run()
 
