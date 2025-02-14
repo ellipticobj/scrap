@@ -15,6 +15,7 @@ then install the app:
 ```bash
 pip install .
 ```
+note that on some systems (like macos) you might have to use `pip3` instead of `pip`.
 
 ## features
 super basic vim keybinds:  
