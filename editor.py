@@ -1,32 +1,36 @@
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout, HSplit, ConditionalContainer
-from prompt_toolkit.widgets import TextArea, Label
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.styles import Style
 import os
 
+from prompt_toolkit.widgets import TextArea
+
 class Editor:
-    def __init__(self, filepath: str, text: str = "", line: int = 0) -> None:
+    def __init__(self, filepath: str, text: str = "") -> None:
         self.text = text
         self.buffer = text
         self.filepath = filepath
-        self.usrhome = os.path.expanduser("~")
-        self.currentline = line
         self.mode = "NORMAL" # NORMAL, INSERT, COMMAND
 
         try:
             with open(filepath, 'r') as file:
                 self.text = file.read()
-                self.buffer = file.read()
+            self.buffer = self.text
         except FileNotFoundError:
-            self.text = ""
-            self.text = ""
+            pass
 
         self.keybinds = KeyBindings()
         self._configurekeybindings_FORNORMALMODE()
         self._configurekeybindings_FORCOMMANDMODE()
         self._configurekeybindings_FORINSERTMODE()
+
+        blackstatusbar = Style.from_dict({
+            'statusbar': 'bg:black fg:white',
+        })
 
         self.textarea = TextArea(
             text=self.text,
@@ -44,9 +48,15 @@ class Editor:
             multiline=False
         )
 
-        self.statusbar = Label(
-            text="",
-            style="class:status"
+        self.statusbartext = FormattedTextControl(text="")
+        self.statusbar = ConditionalContainer(
+            content=Window(
+                content=self.statusbartext,
+                height=1,
+                style='class:statusbar'
+            ),
+            # filter=Condition(lambda: self.mode == "NORMAL"),
+            filter=Condition(lambda: True)
         )
 
         self.rootcontainer = HSplit([
@@ -64,10 +74,13 @@ class Editor:
             layout=Layout(self.rootcontainer),
             key_bindings=self.keybinds,
             full_screen=True,
-            style=Style.from_dict({
-                'status': 'reverse',
-            })
+            # style=Style.from_dict({
+            #     'status': 'reverse',
+            # })
+            style=blackstatusbar
         )
+
+        self._updatestatusbar()
 
     def _configurekeybindings_FORNORMALMODE(self) -> None:
         '''
@@ -107,10 +120,11 @@ class Editor:
             command = self.commandline.text.strip()
             if command:
                 self._handlecommand(command)
+            else:
+                self._updatestatusbar()
             self.mode = "NORMAL"
             self.commandline.text = ''
             self.application.layout.focus(self.textarea)
-            self._updatestatusbar()
 
     def _configurekeybindings_FORINSERTMODE(self) -> None:
         '''
@@ -137,7 +151,7 @@ class Editor:
         text = self._getstatusbartext()
         if message:
             text += " | " + message
-        self.statusbar.text = text
+        self.statusbartext.text = text
         self.application.invalidate()
 
     def _savefile(self) -> None:
@@ -178,16 +192,16 @@ class Editor:
         arg = parts[1] if len(parts) > 1 else None
 
         commands = {
-            "w": self._savecmd,
-            "q": self._quitcmd,
-            "q!": self._quit,
-            "wq": self._saveandquitcmd,
+            "w": self._savecmd_wrapper,
+            "q": self._quitcmd_wrapper,
+            "q!": self._forcequitcmd_wrapper,
+            "wq": self._saveandquit_wrapper,
         }
 
-        func = commands.get(command, self._unknowncmd)
+        func = commands.get(command, self._unknowncmd_wrapper)
         func(arg, parts)
 
-    def _savecmd(self, arg: str, parts: list) -> None:
+    def _savecmd_wrapper(self, arg: str | None, parts: list) -> None:
         '''
         helper command for _handlecommand
         '''
@@ -197,14 +211,10 @@ class Editor:
         self._savefile()
         self._updatestatusbar(f"saved file {os.path.basename(self.filepath)}")
 
-    def _quitcmd(self, arg: str, parts: list) -> None:
+    def _quitcmd_wrapper(self, arg: str, parts: list) -> None:
         '''
         helper command for _handlecommand
         '''
-        if arg == "!":
-            self._quit()
-            return
-
         try:
             with open(self.filepath, 'r') as file:
                 curr = file.read()
@@ -216,7 +226,13 @@ class Editor:
         else:
             self._quit()
 
-    def _saveandquitcmd(self, arg: str, parts: list) -> None:
+    def _forcequitcmd_wrapper(self, arg: str, parts: list) -> None:
+        '''
+        helper command for _handlecommand
+        '''
+        self._quit()
+
+    def _saveandquit_wrapper(self, arg: str, parts: list) -> None:
         '''
         helper command for _handlecommand
         '''
@@ -224,7 +240,7 @@ class Editor:
         self._updatestatusbar(f"saved file {os.path.basename(self.filepath)}")
         self._quit()
 
-    def _unknowncmd(self, arg: str, parts: list) -> None:
+    def _unknowncmd_wrapper(self, arg: str, parts: list) -> None:
         '''
         helper command for _handlecommand
         '''
