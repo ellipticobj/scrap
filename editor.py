@@ -12,7 +12,7 @@ class Editor:
         self.filepath = filepath
         self.usrhome = os.path.expanduser("~")
         self.currentline = line
-        self.mode = "NORMAL" # NORMAL, INSERT, COMMAND, SEARCH
+        self.mode = "NORMAL" # NORMAL, INSERT, COMMAND
 
         try:
             with open(filepath, 'r') as file:
