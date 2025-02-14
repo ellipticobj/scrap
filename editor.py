@@ -1,13 +1,13 @@
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout, HSplit, ConditionalContainer
-from prompt_toolkit.widgets import TextArea, Label, SearchToolbar
+from prompt_toolkit.widgets import TextArea, Label
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.styles import Style
 import os
 
 class Editor:
-    def __init__(self, filepath, text = "", line=0):
+    def __init__(self, filepath: str, text: str = "", line: int = 0) -> None:
         self.text = text
         self.buffer = text
         self.filepath = filepath
@@ -42,8 +42,6 @@ class Editor:
             multiline=False
         )
 
-        self.searchbar = SearchToolbar(ignore_case=True)
-
         self.statusbar = Label(
             text="",
             style="class:status"
@@ -69,7 +67,7 @@ class Editor:
             })
         )
 
-    def _configurekeybindings_FORNORMALMODE(self):
+    def _configurekeybindings_FORNORMALMODE(self) -> None:
         condition = Condition(lambda: self.mode == "NORMAL")
 
         @self.keybinds.add(':', filter=condition)
@@ -86,7 +84,7 @@ class Editor:
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
-    def _configurekeybindings_FORCOMMANDMODE(self):
+    def _configurekeybindings_FORCOMMANDMODE(self) -> None:
         condition = Condition(lambda: self.mode == "COMMAND")
 
         @self.keybinds.add('escape', filter=condition)
@@ -106,7 +104,7 @@ class Editor:
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
-    def _configurekeybindings_FORINSERTMODE(self):
+    def _configurekeybindings_FORINSERTMODE(self) -> None:
         condition = Condition(lambda: self.mode == "INSERT")
         @self.keybinds.add('escape', filter=condition)
         def cancelinsert(event):
@@ -116,30 +114,30 @@ class Editor:
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
-    def _getstatusbartext(self):
+    def _getstatusbartext(self) -> str:
         return f"{self.mode} | in: {os.path.basename(self.filepath) if os.path.basename(self.filepath) else 'untitled'}"
 
-    def _updatestatusbar(self, message=None):
+    def _updatestatusbar(self, message: str = "") -> None:
         text = self._getstatusbartext()
         if message:
             text += " | " + message
         self.statusbar.text = text
         self.application.invalidate()
 
-    def _savefile(self):
+    def _savefile(self) -> None:
         try:
             with open(self.filepath, 'w') as file:
                 file.write(self.textarea.text)
         except Exception as e:
             self._updatestatusbar(f"error saving file {e}")
 
-    def _updatebuffer(self, _):
+    def _updatebuffer(self, _) -> None:
         self.buffer = self.textarea.text
 
-    def _quit(self):
+    def _quit(self) -> None:
         self.application.exit()
 
-    def _handlecommand(self, cmd):
+    def _handlecommand(self, cmd: str) -> None:
         '''
         handles commands:
             :w --- save the file
@@ -151,35 +149,48 @@ class Editor:
         if not parts:
             return
 
-        match parts[0]:
-            case "w":
-                if len(parts) != 1:
-                    self._updatestatusbar("too many arguments for `:w`")
-                    return
+        command = parts[0]
+        arg = parts[1] if len(parts) > 1 else None
 
-                self._savefile()
-                self._updatestatusbar(f"saved file  {self.filepath}")
-            case "q":
-                if len(parts) < 1:
-                    if parts[1] and parts[1] == "!":
-                        self._quit()
+        commands = {
+            "w": self._savecmd,
+            "q": self._quitcmd,
+            "q!": self._quit,
+            "wq": self._savecmd,
+        }
 
-                try:
-                    with open(self.filepath, 'r') as file:
-                        cont = file.read()
-                except FileNotFoundError:
-                    cont = ''
+        func = commands.get(command, self._unknowncmd)
+        func(arg, parts)
 
-                if cont != self.buffer:
-                    self._updatestatusbar("changes have been made.")
-                    return
-                self._quit()
-            case "wq":
-                self._savefile()
-                self._quit()
-                self._updatestatusbar("saved and quit")
-            case _:
-                self._updatestatusbar(f"unknown command: {cmd}")
+    def _savecmd(self, arg: str, parts: list) -> None:
+        if arg == "q":
+            self._savefile()
+            self._updatestatusbar(f"saved file {os.path.basename(self.filepath)}")
+            self._quit()
+        elif arg is not None:
+            self._updatestatusbar("too many arguments for command `:w`")
+            return
+        self._savefile()
+        self._updatestatusbar(f"saved file {os.path.basename(self.filepath)}")
+
+    def _quitcmd(self, arg: str, parts: list) -> None:
+        if arg == "!":
+            self._quit()
+            return
+
+        try:
+            with open(self.filepath, 'r') as file:
+                curr = file.read()
+        except FileNotFoundError:
+            curr = ''
+
+        if curr != self.buffer:
+            self._updatestatusbar("unsaved changes. save with :w")
+        else:
+            self._quit()
+
+    def _unknowncmd(self, arg: str, parts: list) -> None:
+        self._updatestatusbar(f"unknown command: {parts}")
 
     def run(self):
         self._updatestatusbar()

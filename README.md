@@ -14,7 +14,9 @@ default folder for notes is at ~/.config/scrappad
 ![screenshot](assets/screenshot.png)
 
 # roadmap
+- [ ] logging
 - [ ] make program run faster
 - [ ] add support for markdown
 - [ ] add support for exporting notes
 - [ ] autosave?
+- [ ] argparse?
