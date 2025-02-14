@@ -18,7 +18,9 @@ class Editor:
         try:
             with open(filepath, 'r') as file:
                 self.text = file.read()
+                self.buffer = file.read()
         except FileNotFoundError:
+            self.text = ""
             self.text = ""
 
         self.keybinds = KeyBindings()
@@ -93,7 +95,7 @@ class Editor:
         '''
         condition = Condition(lambda: self.mode == "COMMAND")
 
-        @self.keybinds.add('escape', filter=condition)
+        @self.keybinds.add('escape', filter=condition, eager=True)
         def cancelcommand(event):
             self.mode = "NORMAL"
             self.commandline.text = ''
@@ -115,11 +117,10 @@ class Editor:
         adds keybinds for insert mode
         '''
         condition = Condition(lambda: self.mode == "INSERT")
-        @self.keybinds.add('escape', filter=condition)
+        @self.keybinds.add('escape', filter=condition, eager=True)
         def cancelinsert(event):
             self.mode = "NORMAL"
             self.textarea.read_only = True
-            self.commandline.text = ''
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
