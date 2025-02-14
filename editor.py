@@ -7,8 +7,9 @@ from prompt_toolkit.styles import Style
 import os
 
 class Editor:
-    def __init__(self, filepath, buffer = "", line=0):
-        self.text = buffer
+    def __init__(self, filepath, text = "", line=0):
+        self.text = text
+        self.buffer = text
         self.filepath = filepath
         self.usrhome = os.path.expanduser("~")
         self.currentline = line
@@ -32,6 +33,8 @@ class Editor:
             wrap_lines=True,
             read_only=True
         )
+        # updates local buffer when text changes
+        self.textarea.buffer.on_text_changed += self._updatebuffer
 
         self.commandline = TextArea(
             height=1,
@@ -42,7 +45,6 @@ class Editor:
         self.searchbar = SearchToolbar(ignore_case=True)
 
         self.statusbar = Label(
-            # TODO
             text="",
             style="class:status"
         )
@@ -129,18 +131,13 @@ class Editor:
             with open(self.filepath, 'w') as file:
                 file.write(self.textarea.text)
         except Exception as e:
-            # TODO: error that appears when saving is not succesful"
-            return f"error saving file {e}"
+            self._updatestatusbar(f"error saving file {e}")
+
+    def _updatebuffer(self, _):
+        self.buffer = self.textarea.text
 
     def _quit(self):
         self.application.exit()
-
-    def _search(self, query):
-        # TODO: check this code
-        self.commandline.prompt = '/'
-        lines = self.textarea.text.split('\n')
-        matches = [i+1 for i, line in enumerate(lines) if query in line]
-        self._updatestatusbar(f"found {len(matches)} matches at lines {matches}")
 
     def _handlecommand(self, cmd):
         '''
@@ -157,21 +154,28 @@ class Editor:
         match parts[0]:
             case "w":
                 if len(parts) != 1:
-                    return "TODO: error that appears when too many args are passed into :w"
+                    self._updatestatusbar("too many arguments for `:w`")
+                    return
+
                 self._savefile()
-                return f"saved file to {self.filepath}"
+                self._updatestatusbar(f"saved file  {self.filepath}")
             case "q":
                 if len(parts) < 1:
                     if parts[1] and parts[1] == "!":
                         self._quit()
-                # TODO: add buffer checking
+
+                with open(self.filepath, 'r') as file:
+                    cont = file.read()
+                if cont != self.buffer:
+                    self._updatestatusbar("changes have been made.")
+                    return
                 self._quit()
             case "wq":
                 self._savefile()
                 self._quit()
-                return "saved and quit"
+                self._updatestatusbar("saved and quit")
             case _:
-                return "unknown command: {cmd}"
+                self._updatestatusbar(f"unknown command: {cmd}")
 
     def run(self):
         self._updatestatusbar()
