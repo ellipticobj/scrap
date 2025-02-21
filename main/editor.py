@@ -5,16 +5,17 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.styles import Style
+from typing import Optional, Dict, Any
 import os
 
 from prompt_toolkit.widgets import TextArea
 
 class Editor:
     def __init__(self, filepath: str, text: str = "") -> None:
-        self.text = text
-        self.buffer = text
-        self.filepath = filepath
-        self.mode = "NORMAL" # NORMAL, INSERT, COMMAND
+        self.text: str = text
+        self.buffer: str = text
+        self.filepath: str = filepath
+        self.mode: str = "NORMAL" # NORMAL, INSERT, COMMAND
 
         try:
             with open(filepath, 'r') as file:
@@ -33,51 +34,47 @@ class Editor:
         })
 
         self.textarea = TextArea(
-            text=self.text,
-            scrollbar=True,
-            line_numbers=True,
-            wrap_lines=True,
-            read_only=True
+            text = self.text,
+            scrollbar = True,
+            line_numbers = True,
+            wrap_lines = True,
+            read_only = True
         )
         # updates local buffer when text changes
         self.textarea.buffer.on_text_changed += self._updatebuffer
 
         self.commandline = TextArea(
-            height=1,
-            prompt=":",
-            multiline=False
+            height = 1,
+            prompt = ":",
+            multiline = False
         )
 
-        self.statusbartext = FormattedTextControl(text="")
-        self.statusbar = ConditionalContainer(
-            content=Window(
-                content=self.statusbartext,
-                height=1,
-                style='class:statusbar'
+        self.statusbartext: FormattedTextControl = FormattedTextControl(text="")
+        self.statusbar: ConditionalContainer = ConditionalContainer(
+            content = Window(
+                content = self.statusbartext,
+                height = 1,
+                style = 'class:statusbar'
             ),
-            # filter=Condition(lambda: self.mode == "NORMAL"),
-            filter=Condition(lambda: True)
+            filter = Condition(lambda: True)
         )
 
-        self.rootcontainer = HSplit([
+        self.rootcontainer: HSplit = HSplit([
             self.textarea,
             ConditionalContainer(
-                content=self.commandline,
-                filter=Condition(
+                content = self.commandline,
+                filter = Condition(
                     lambda: self.mode == "COMMAND"
                 ),
             ),
             self.statusbar,
         ])
 
-        self.application = Application(
-            layout=Layout(self.rootcontainer),
-            key_bindings=self.keybinds,
-            full_screen=True,
-            # style=Style.from_dict({
-            #     'status': 'reverse',
-            # })
-            style=blackstatusbar
+        self.application: Application = Application(
+            layout = Layout(self.rootcontainer),
+            key_bindings = self.keybinds,
+            full_screen = True,
+            style = blackstatusbar
         )
 
         self._updatestatusbar()
@@ -89,14 +86,14 @@ class Editor:
         condition = Condition(lambda: self.mode == "NORMAL")
 
         @self.keybinds.add(':', filter=condition)
-        def entercommandmode(event):
+        def entercommandmode(event) -> None:
             self.mode = "COMMAND"
             self.commandline.text = ''
             self.application.layout.focus(self.commandline)
             self._updatestatusbar()
 
         @self.keybinds.add('i', filter=condition)
-        def enterinsertmode(event):
+        def enterinsertmode(event) -> None:
             self.mode = "INSERT"
             self.textarea.read_only = False
             self.application.layout.focus(self.textarea)
@@ -108,15 +105,15 @@ class Editor:
         '''
         condition = Condition(lambda: self.mode == "COMMAND")
 
-        @self.keybinds.add('escape', filter=condition, eager=True)
-        def cancelcommand(event):
+        @self.keybinds.add('escape', filter = condition, eager = True)
+        def cancelcommand(event) -> None:
             self.mode = "NORMAL"
             self.commandline.text = ''
             self.application.layout.focus(self.textarea)
             self._updatestatusbar()
 
         @self.keybinds.add('enter', filter=condition)
-        def executecommand(event):
+        def executecommand(event) -> None:
             command = self.commandline.text.strip()
             if command:
                 self._handlecommand(command)
@@ -132,7 +129,7 @@ class Editor:
         '''
         condition = Condition(lambda: self.mode == "INSERT")
         @self.keybinds.add('escape', filter=condition, eager=True)
-        def cancelinsert(event):
+        def cancelinsert(event) -> None:
             self.mode = "NORMAL"
             self.textarea.read_only = True
             self.application.layout.focus(self.textarea)
@@ -189,9 +186,9 @@ class Editor:
             return
 
         command = parts[0]
-        arg = parts[1] if len(parts) > 1 else None
+        arg: Optional[str] = parts[1] if len(parts) > 1 else None
 
-        commands = {
+        commands: Dict[str, Any] = {
             "w": self._savecmd_wrapper,
             "q": self._quitcmd_wrapper,
             "q!": self._forcequitcmd_wrapper,

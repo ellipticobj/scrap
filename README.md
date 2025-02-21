@@ -34,6 +34,7 @@ run `pip install .` to build this project.
 ![screenshot](assets/screenshot.png)
 
 ## roadmap
+- [ ] use cython to build
 - [ ] logging  
 - [ ] make program run faster  
 - [ ] add support for markdown  
