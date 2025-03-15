@@ -1,37 +1,40 @@
 use crossterm::{
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
-    ExecutableCommand,
-    event::{self, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::io::{self, Write};
-use std::time::Duration;
+use std::{error::Error, io::stdout, io::Write};
+use tui::{
+    backend::{Backend, CrosstermBackend},
+    Terminal,
+    widgets::{Block, Borders, Paragraph},
+    layout::{Constraint, Direction, Layout},
+    style::{Style, Color},
+    text::{Span, Spans},
+};
 
+enum Mode {
+    Normal,
+    Insert,
+    Command
+}
 
-fn main() -> crossterm::Result<()> {
-    let mut stdout = io::stdout();
-    let mut running = true;
+struct App {
+    mode: Mode,
+    commandbuff: String,
+    textbuff: String
+}
 
-    stdout.execute(EnterAlternateScreen)?;
-    terminal::enable_raw_mode()?;
-
-    while running {
-        stdout.execute(Clear(ClearType::All))?;
-        println!("press q to exit");
-
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(event) = event::read()? {
-                match event.code {
-                    KeyCode::Char('q') => running = false,
-                    KeyCode::Char(c) => {
-                        println!("pressed {}", c);
-                    }
-                    _ => {}
-                }
-            }
+impl App {
+    fn new() -> App {
+        App {
+            mode: Mode::Normal,
+            textbuff: String::new(),
+            commandbuff: String::new(),
         }
     }
+}
 
-    terminal::disable_raw_mode()?;
-    stdout.execute(LeaveAlternateScreen)?;
-    Ok(())
+fn main() -> Result<(), Box<dyn Error>> {
+
 }
